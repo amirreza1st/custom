@@ -114,21 +114,19 @@ def send_direct_soundcloud_link(msg):
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
-        'default_search': 'soundcloud',  # جستجو در ساندکلاود
+        'default_search': 'scsearch',  # جستجو در SoundCloud
         'noplaylist': True,
         'skip_download': True,
+        'forceurl': True,
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # جستجوی آهنگ و گرفتن اطلاعات
             info = ydl.extract_info(song, download=False)
             
-            # اگر چند ویدئو/آهنگ پیدا شد، اولین را بگیر
             if 'entries' in info:
                 info = info['entries'][0]
 
-            # لینک مستقیم به فایل صوتی (url) را بگیر
             audio_url = info.get('url', None)
             title = info.get('title', 'Unknown')
 
