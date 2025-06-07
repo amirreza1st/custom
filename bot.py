@@ -2,6 +2,7 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from flask import Flask, request
 import os
+import yt_dlp
 from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
@@ -105,21 +106,38 @@ def handle_anon_message(message):
     user_states.pop(message.from_user.id, None)
 
 @bot.message_handler(func=lambda msg: user_states.get(msg.from_user.id) == "awaiting_song_name")
-def search_song(msg):
+def send_direct_soundcloud_link(msg):
     song = msg.text.strip()
     user_states.pop(msg.from_user.id, None)
-    bot.send_message(msg.chat.id, f"🔍 در حال جستجوی آهنگ: {song}")
+    bot.send_message(msg.chat.id, f"🔍 در حال جستجوی مستقیم آهنگ: {song}")
+
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'quiet': True,
+        'default_search': 'soundcloud',  # جستجو در ساندکلاود
+        'noplaylist': True,
+        'skip_download': True,
+    }
+
     try:
-        query = f"site:soundcloud.com {song}"
-        r = requests.get(f"https://duckduckgo.com/html/?q={requests.utils.quote(query)}", headers={"User-Agent": "Mozilla/5.0"})
-        soup = BeautifulSoup(r.text, "html.parser")
-        link = next((a["href"] for a in soup.select("a.result__a") if "soundcloud.com" in a["href"]), None)
-        if link:
-            bot.send_message(msg.chat.id, f"🎧 پیدا شد:\n{link}")
-        else:
-            bot.send_message(msg.chat.id, "❌ هیچ آهنگی پیدا نشد.")
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # جستجوی آهنگ و گرفتن اطلاعات
+            info = ydl.extract_info(song, download=False)
+            
+            # اگر چند ویدئو/آهنگ پیدا شد، اولین را بگیر
+            if 'entries' in info:
+                info = info['entries'][0]
+
+            # لینک مستقیم به فایل صوتی (url) را بگیر
+            audio_url = info.get('url', None)
+            title = info.get('title', 'Unknown')
+
+            if audio_url:
+                bot.send_message(msg.chat.id, f"🎧 پیدا شد:\n{title}\n\n🎵 لینک مستقیم پخش:\n{audio_url}")
+            else:
+                bot.send_message(msg.chat.id, "❌ نتوانستم لینک مستقیم آهنگ را پیدا کنم.")
     except Exception as e:
-        bot.send_message(msg.chat.id, f"⚠️ خطا:\n{str(e)}")
+        bot.send_message(msg.chat.id, f"⚠️ خطا در جستجو:\n{str(e)}")
 
 @bot.message_handler(func=lambda m: m.from_user.id == ADMIN_ID and m.chat.type == "private")
 def handle_admin_reply(message):
