@@ -27,7 +27,7 @@ def start_keyboard():
 
 def cancel_keyboard():
     markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("انصــراف", callback_data="cancel"))
+    markup.add(InlineKeyboardButton("بـســتن", callback_data="cancel"))
     return markup
 
 def admin_reply_keyboard(user_id):
@@ -53,11 +53,11 @@ def callback_query(call):
         bot.send_message(call.message.chat.id,
                          """هر پیامی که از الان بفرستی به صورت ناشناس برای مــن ارسال میشــه 👐
 
-هروقت تموم شد روی "انصــراف" کلیک کن 🙌""",
+هروقت تموم شد روی "بـســتن" کلیک کن 🙌""",
                          reply_markup=cancel_keyboard())
     elif data == "cancel":
         user_states.pop(call.from_user.id, None)
-        bot.send_message(call.message.chat.id, "❌ cancel shod.")
+        bot.send_message(call.message.chat.id, "پنــل ناشـناس بستـه شــد")
     elif data == "playlist":
         bot.send_message(call.message.chat.id, """🎧 Listen to "SaVaGe" on #SoundCloud
 
