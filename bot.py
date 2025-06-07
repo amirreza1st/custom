@@ -110,6 +110,8 @@ def handle_anon_message(message):
 منتظــر باش تا از همیــنجا جوابت رو بــدم""")
     user_states.pop(message.from_user.id, None)
 
+import traceback
+
 @bot.message_handler(func=lambda message: user_states.get(message.from_user.id) == "chatting")
 def live_chat_handler(message):
     user_msg = message.text
@@ -128,7 +130,9 @@ def live_chat_handler(message):
         bot.send_message(message.chat.id, bot_reply)
     except Exception as e:
         bot.send_message(message.chat.id, "متاسفانه در پاسخ‌دهی به مشکل خوردیم. لطفا دوباره تلاش کن.")
-        print(f"OpenAI API error: {e}")
+        print("OpenAI API error:", e)
+        traceback.print_exc()
+
 
 @bot.message_handler(func=lambda m: m.from_user.id == ADMIN_ID and m.chat.type == "private")
 def handle_admin_reply(message):
