@@ -2,10 +2,7 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from flask import Flask, request
 import os
-import yt_dlp
 from dotenv import load_dotenv
-import requests
-from bs4 import BeautifulSoup
 
 load_dotenv()  # بارگذاری متغیرهای محیطی از .env
 
@@ -24,8 +21,7 @@ def start_keyboard():
         InlineKeyboardButton("HiddenChat 👀", callback_data="anon_msg"),
         InlineKeyboardButton("PlayList 🎧", callback_data="playlist"),
         InlineKeyboardButton("Links ☄️", callback_data="links"),
-        InlineKeyboardButton("Channel 🩸", url="https://t.me/anoraorg"),
-        InlineKeyboardButton("🎵 دانلود موزیک", callback_data="music_download")  # دکمه دانلود موزیک اضافه شد
+        InlineKeyboardButton("Channel 🩸", url="https://t.me/anoraorg")
     )
     return markup
 
@@ -79,9 +75,6 @@ https://www.instagram.com/amirrezkhalili?igsh=aHVteG91NWZtb3V6
 · SoundCloud ›››
 https://on.soundcloud.com/GA0YwIlCeV9DyNQsfA
 """)
-    elif data == "music_download":
-        user_states[call.from_user.id] = "awaiting_song_name"
-        bot.send_message(call.message.chat.id, "🎶 لطفاً نام آهنگ را وارد کن:")
     elif data.startswith("reply_"):
         target_user = int(data.split("_")[1])
         reply_states[call.from_user.id] = target_user
@@ -105,38 +98,6 @@ def handle_anon_message(message):
 منتظــر باش تا از همیــنجا جوابت رو بــدم""")
     user_states.pop(message.from_user.id, None)
 
-@bot.message_handler(func=lambda msg: user_states.get(msg.from_user.id) == "awaiting_song_name")
-def send_direct_soundcloud_link(msg):
-    song = msg.text.strip()
-    user_states.pop(msg.from_user.id, None)
-    bot.send_message(msg.chat.id, f"🔍 در حال جستجوی مستقیم ویدیو در یوتیوب برای: {song}")
-
-    ydl_opts = {
-        'format': 'best[ext=mp4]/best',
-        'quiet': True,
-        'default_search': 'ytsearch',  # جستجو در یوتیوب
-        'noplaylist': True,
-        'skip_download': True,
-    }
-
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(song, download=False)
-            
-            if 'entries' in info:
-                info = info['entries'][0]
-
-            video_url = info.get('webpage_url', None)
-            title = info.get('title', 'Unknown')
-
-            if video_url:
-                bot.send_message(msg.chat.id, f"🎧 پیدا شد:\n{title}\n\n🎥 لینک مستقیم ویدیو یوتیوب:\n{video_url}")
-            else:
-                bot.send_message(msg.chat.id, "❌ نتوانستم لینک ویدیو یوتیوب را پیدا کنم.")
-    except Exception as e:
-        bot.send_message(msg.chat.id, f"⚠️ خطا در جستجو:\n{str(e)}")
-
-
 @bot.message_handler(func=lambda m: m.from_user.id == ADMIN_ID and m.chat.type == "private")
 def handle_admin_reply(message):
     if message.from_user.id in reply_states:
@@ -144,16 +105,15 @@ def handle_admin_reply(message):
         bot.send_message(target_id, f"{message.text}\n\n✍️ Sign by Amirreza")
         bot.send_message(message.chat.id, "✅ sended.")
 
-@app.route("/", methods=["GET"])
-def home():
-    return "Bot is up!", 200
-
+# Webhook route برای Railway
 @app.route("/", methods=["POST"])
 def webhook():
-    json_string = request.get_data().decode('utf-8')
-    update = telebot.types.Update.de_json(json_string)
-    bot.process_new_updates([update])
+    bot.process_new_updates([telebot.types.Update.de_json(request.stream.read().decode("utf-8"))])
     return "OK", 200
 
+@app.route("/", methods=["GET"])
+def home():
+    return "Bot is running.", 200
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
