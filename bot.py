@@ -94,14 +94,15 @@ def handle_anon_message(message):
     user_info += f"\n🆔 number id: {sender.id}"
     msg = f"{user_info}\n\n📨 payam:\n{message.text}"
     bot.send_message(ADMIN_ID, msg, reply_markup=admin_reply_keyboard(sender.id))
-    bot.send_message(message.chat.id, "✅ Done.")
+    bot.send_message(message.chat.id, """پیامــــت ارسال شد عزیــزم .🧸
+منتظــر باش تا از همیــنجا جوابت رو بــدم""")
     user_states.pop(message.from_user.id, None)
 
 @bot.message_handler(func=lambda m: m.from_user.id == ADMIN_ID and m.chat.type == "private")
 def handle_admin_reply(message):
     if message.from_user.id in reply_states:
         target_id = reply_states.pop(message.from_user.id)
-        bot.send_message(target_id, f"{message.text}\n\n✍️ کوچیک شما, امیررضا")
+        bot.send_message(target_id, f"{message.text}\n\n✍️ Sign by Amirreza")
         bot.send_message(message.chat.id, "✅ sended.")
 
 # Webhook route برای Railway
