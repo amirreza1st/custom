@@ -1,4 +1,5 @@
 pyTelegramBotAPI
-Flask
+flask
 python-dotenv
-yt-dlp
+requests
+beautifulsoup4
