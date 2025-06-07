@@ -3,7 +3,6 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from flask import Flask, request
 import os
 from dotenv import load_dotenv
-import requests
 
 load_dotenv()  # بارگذاری متغیرهای محیطی از .env
 
@@ -22,8 +21,7 @@ def start_keyboard():
         InlineKeyboardButton("HiddenChat 👀", callback_data="anon_msg"),
         InlineKeyboardButton("PlayList 🎧", callback_data="playlist"),
         InlineKeyboardButton("Links ☄️", callback_data="links"),
-        InlineKeyboardButton("Channel 🩸", url="https://t.me/anoraorg"),
-        InlineKeyboardButton("💰 نرخ ارز به تومان", callback_data="get_rates")  # دکمه جدید
+        InlineKeyboardButton("Channel 🩸", url="https://t.me/anoraorg")
     )
     return markup
 
@@ -77,60 +75,6 @@ https://www.instagram.com/amirrezkhalili?igsh=aHVteG91NWZtb3V6
 · SoundCloud ›››
 https://on.soundcloud.com/GA0YwIlCeV9DyNQsfA
 """)
-    elif data == "get_rates":
-        try:
-            # دریافت نرخ دلار به تومان از API نوسان
-            url_toman = "https://api.navasan.ir/v1/exchange/latest"
-            res_toman = requests.get(url_toman, timeout=10)
-            data_toman = res_toman.json()
-            dollar_to_toman = None
-            for item in data_toman.get('data', []):
-                if item.get('title_fa') == 'دلار آمریکا':
-                    dollar_to_toman = float(item.get('value', 0))
-                    break
-            if dollar_to_toman is None:
-                bot.send_message(call.message.chat.id, "خطا در دریافت نرخ دلار به تومان.")
-                return
-
-            # دریافت نرخ ارزهای جهانی به دلار از exchangerate.host
-            url = "https://api.exchangerate.host/latest?base=USD&symbols=KWD,OMR,GBP,CHF,EUR,USD,CAD,CNY"
-            res = requests.get(url, timeout=10)
-            data = res.json()
-
-            if 'rates' in data:
-                rates = data['rates']
-
-                currencies = {
-                    "دینار کویت (KWD)": "KWD",
-                    "ریال عمان (OMR)": "OMR",
-                    "پوند بریتانیا (GBP)": "GBP",
-                    "فرانک سوئیس (CHF)": "CHF",
-                    "یورو (EUR)": "EUR",
-                    "دلار ایالات متحده (USD)": "USD",
-                    "دلار کانادا (CAD)": "CAD",
-                    "یوآن چین (CNY)": "CNY",
-                }
-
-                lines = ["💰 نرخ ارزهای لحظه‌ای به تومان 🇮🇷\n"]
-                for name, code in currencies.items():
-                    rate = rates.get(code)
-                    if rate is None:
-                        lines.append(f"{name}: اطلاعات موجود نیست")
-                    else:
-                        to_toman = rate * dollar_to_toman
-                        lines.append(f"{name}: {to_toman:,.0f} تومان")
-
-                text = "\n".join(lines)
-                text += "\n\n⏰ به‌روزرسانی لحظه‌ای از منابع معتبر"
-
-                bot.answer_callback_query(call.id)
-                bot.send_message(call.message.chat.id, text)
-            else:
-                bot.send_message(call.message.chat.id, "خطا در دریافت نرخ ارزهای جهانی.")
-        except Exception as e:
-            bot.send_message(call.message.chat.id, "مشکلی در دریافت داده‌ها رخ داده است.")
-            print(f"Error fetching exchange rates: {e}")
-
     elif data.startswith("reply_"):
         target_user = int(data.split("_")[1])
         reply_states[call.from_user.id] = target_user
