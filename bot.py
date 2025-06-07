@@ -3,14 +3,18 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from flask import Flask, request
 import os
 from dotenv import load_dotenv
+import openai  # اضافه شد برای هوش مصنوعی
 
 load_dotenv()  # بارگذاری متغیرهای محیطی از .env
 
 API_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # کلید اوپن ای آی
 
 bot = telebot.TeleBot(API_TOKEN)
 app = Flask(__name__)
+
+openai.api_key = OPENAI_API_KEY
 
 user_states = {}
 reply_states = {}
@@ -21,7 +25,8 @@ def start_keyboard():
         InlineKeyboardButton("HiddenChat 👀", callback_data="anon_msg"),
         InlineKeyboardButton("PlayList 🎧", callback_data="playlist"),
         InlineKeyboardButton("Links ☄️", callback_data="links"),
-        InlineKeyboardButton("Channel 🩸", url="https://t.me/anoraorg")
+        InlineKeyboardButton("Channel 🩸", url="https://t.me/anoraorg"),
+        InlineKeyboardButton("شروع چت زنده 🤖", callback_data="start_chat")  # دکمه جدید
     )
     return markup
 
@@ -56,8 +61,12 @@ def callback_query(call):
 هروقت تموم شد روی "بـســتن" کلیک کن 🙌""",
                          reply_markup=cancel_keyboard())
     elif data == "cancel":
-        user_states.pop(call.from_user.id, None)
-        bot.send_message(call.message.chat.id, "پنــل ناشـناس بستـه شــد")
+        if user_states.get(call.from_user.id) == "chatting":
+            user_states.pop(call.from_user.id, None)
+            bot.send_message(call.message.chat.id, "چت زنده متوقف شد.", reply_markup=start_keyboard())
+        else:
+            user_states.pop(call.from_user.id, None)
+            bot.send_message(call.message.chat.id, "پنــل ناشـناس بستـه شــد")
     elif data == "playlist":
         bot.send_message(call.message.chat.id, """🎧 Listen to "SaVaGe" on #SoundCloud
 
@@ -75,6 +84,9 @@ https://www.instagram.com/amirrezkhalili?igsh=aHVteG91NWZtb3V6
 · SoundCloud ›››
 https://on.soundcloud.com/GA0YwIlCeV9DyNQsfA
 """)
+    elif data == "start_chat":  # شروع چت زنده
+        user_states[call.from_user.id] = "chatting"
+        bot.send_message(call.message.chat.id, "ربات حاضر است، هر چی می‌خوای بگو!", reply_markup=cancel_keyboard())
     elif data.startswith("reply_"):
         target_user = int(data.split("_")[1])
         reply_states[call.from_user.id] = target_user
@@ -97,6 +109,26 @@ def handle_anon_message(message):
     bot.send_message(message.chat.id, """پیامــــت ارسال شد عزیــزم .🧸
 منتظــر باش تا از همیــنجا جوابت رو بــدم""")
     user_states.pop(message.from_user.id, None)
+
+@bot.message_handler(func=lambda message: user_states.get(message.from_user.id) == "chatting")
+def live_chat_handler(message):
+    user_msg = message.text
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "تو یک دستیار فارسی هستی."},
+                {"role": "user", "content": user_msg}
+            ],
+            max_tokens=150,
+            temperature=0.7,
+        )
+        bot_reply = response['choices'][0]['message']['content'].strip()
+        bot.send_message(message.chat.id, bot_reply)
+    except Exception as e:
+        bot.send_message(message.chat.id, "متاسفانه در پاسخ‌دهی به مشکل خوردیم. لطفا دوباره تلاش کن.")
+        print(f"OpenAI API error: {e}")
 
 @bot.message_handler(func=lambda m: m.from_user.id == ADMIN_ID and m.chat.type == "private")
 def handle_admin_reply(message):
