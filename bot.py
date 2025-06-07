@@ -109,15 +109,14 @@ def handle_anon_message(message):
 def send_direct_soundcloud_link(msg):
     song = msg.text.strip()
     user_states.pop(msg.from_user.id, None)
-    bot.send_message(msg.chat.id, f"🔍 در حال جستجوی مستقیم آهنگ: {song}")
+    bot.send_message(msg.chat.id, f"🔍 در حال جستجوی مستقیم ویدیو در یوتیوب برای: {song}")
 
     ydl_opts = {
-        'format': 'bestaudio/best',
+        'format': 'best[ext=mp4]/best',
         'quiet': True,
-        'default_search': 'scsearch',  # جستجو در SoundCloud
+        'default_search': 'ytsearch',  # جستجو در یوتیوب
         'noplaylist': True,
         'skip_download': True,
-        'forceurl': True,
     }
 
     try:
@@ -127,15 +126,16 @@ def send_direct_soundcloud_link(msg):
             if 'entries' in info:
                 info = info['entries'][0]
 
-            audio_url = info.get('url', None)
+            video_url = info.get('webpage_url', None)
             title = info.get('title', 'Unknown')
 
-            if audio_url:
-                bot.send_message(msg.chat.id, f"🎧 پیدا شد:\n{title}\n\n🎵 لینک مستقیم پخش:\n{audio_url}")
+            if video_url:
+                bot.send_message(msg.chat.id, f"🎧 پیدا شد:\n{title}\n\n🎥 لینک مستقیم ویدیو یوتیوب:\n{video_url}")
             else:
-                bot.send_message(msg.chat.id, "❌ نتوانستم لینک مستقیم آهنگ را پیدا کنم.")
+                bot.send_message(msg.chat.id, "❌ نتوانستم لینک ویدیو یوتیوب را پیدا کنم.")
     except Exception as e:
         bot.send_message(msg.chat.id, f"⚠️ خطا در جستجو:\n{str(e)}")
+
 
 @bot.message_handler(func=lambda m: m.from_user.id == ADMIN_ID and m.chat.type == "private")
 def handle_admin_reply(message):
