@@ -3,7 +3,8 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from flask import Flask, request
 import os
 from dotenv import load_dotenv
-import yt_dlp
+import requests
+from bs4 import BeautifulSoup
 
 load_dotenv()  # بارگذاری متغیرهای محیطی از .env
 
@@ -20,16 +21,16 @@ def start_keyboard():
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(
         InlineKeyboardButton("HiddenChat 👀", callback_data="anon_msg"),
-        InlineKeyboardButton("PlayList 🎷", callback_data="playlist"),
+        InlineKeyboardButton("PlayList 🎧", callback_data="playlist"),
         InlineKeyboardButton("Links ☄️", callback_data="links"),
         InlineKeyboardButton("Channel 🩸", url="https://t.me/anoraorg"),
-        InlineKeyboardButton("🎵 دانلود موزیک", callback_data="music_download")
+        InlineKeyboardButton("🎵 دانلود موزیک", callback_data="music_download")  # دکمه دانلود موزیک اضافه شد
     )
     return markup
 
 def cancel_keyboard():
     markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("ب‌س‌تن", callback_data="cancel"))
+    markup.add(InlineKeyboardButton("بـســتن", callback_data="cancel"))
     return markup
 
 def admin_reply_keyboard(user_id):
@@ -43,9 +44,9 @@ def admin_reply_keyboard(user_id):
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.send_message(message.chat.id, """س‌سلام \d8، من امیررضـام .🧗
+    bot.send_message(message.chat.id, """ســلام ، من امیررضـام .🦇
 
-خ‌‌وش اوم‌دی ❣""", reply_markup=start_keyboard())
+خــــوش اومـدی ❣""", reply_markup=start_keyboard())
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
@@ -61,7 +62,7 @@ def callback_query(call):
         user_states.pop(call.from_user.id, None)
         bot.send_message(call.message.chat.id, "پنــل ناشـناس بستـه شــد")
     elif data == "playlist":
-        bot.send_message(call.message.chat.id, """🎷 Listen to "SaVaGe" on #SoundCloud
+        bot.send_message(call.message.chat.id, """🎧 Listen to "SaVaGe" on #SoundCloud
 
 https://on.soundcloud.com/28yny4Qd4ThYAPGcWt
 """)
@@ -79,7 +80,7 @@ https://on.soundcloud.com/GA0YwIlCeV9DyNQsfA
 """)
     elif data == "music_download":
         user_states[call.from_user.id] = "awaiting_song_name"
-        bot.send_message(call.message.chat.id, "🎶 لطفاً نام آهنگ مورد نظر را ارسال کنید:")
+        bot.send_message(call.message.chat.id, "🎶 لطفاً نام آهنگ را وارد کن:")
     elif data.startswith("reply_"):
         target_user = int(data.split("_")[1])
         reply_states[call.from_user.id] = target_user
@@ -95,41 +96,30 @@ def handle_anon_message(message):
     sender = message.from_user
     user_info = f"👤 from: {sender.first_name}"
     if sender.username:
-        user_info += f"\n📌 username: @{sender.username}"
-    user_info += f"\n🆟️ number id: {sender.id}"
+        user_info += f"\n📎 username: @{sender.username}"
+    user_info += f"\n🆔 number id: {sender.id}"
     msg = f"{user_info}\n\n📨 payam:\n{message.text}"
     bot.send_message(ADMIN_ID, msg, reply_markup=admin_reply_keyboard(sender.id))
     bot.send_message(message.chat.id, """پیامــــت ارسال شد عزیــزم .🧸
 منتظــر باش تا از همیــنجا جوابت رو بــدم""")
     user_states.pop(message.from_user.id, None)
 
-@bot.message_handler(func=lambda message: user_states.get(message.from_user.id) == "awaiting_song_name")
-def handle_song_request(message):
-    song_name = message.text.strip()
-    msg = bot.reply_to(message, f"🔍 در حال جستجوی آهنگ '{song_name}'، لطفاً منتظر بمانید...")
+@bot.message_handler(func=lambda msg: user_states.get(msg.from_user.id) == "awaiting_song_name")
+def search_song(msg):
+    song = msg.text.strip()
+    user_states.pop(msg.from_user.id, None)
+    bot.send_message(msg.chat.id, f"🔍 در حال جستجوی آهنگ: {song}")
     try:
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'noplaylist': True,
-            'default_search': 'ytsearch1',
-            'outtmpl': 'song.%(ext)s',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
-            'quiet': True
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([song_name])
-
-        with open("song.mp3", "rb") as audio:
-            bot.send_audio(message.chat.id, audio, caption=f"🎵 {song_name}")
-        os.remove("song.mp3")
+        query = f"site:soundcloud.com {song}"
+        r = requests.get(f"https://duckduckgo.com/html/?q={requests.utils.quote(query)}", headers={"User-Agent": "Mozilla/5.0"})
+        soup = BeautifulSoup(r.text, "html.parser")
+        link = next((a["href"] for a in soup.select("a.result__a") if "soundcloud.com" in a["href"]), None)
+        if link:
+            bot.send_message(msg.chat.id, f"🎧 پیدا شد:\n{link}")
+        else:
+            bot.send_message(msg.chat.id, "❌ هیچ آهنگی پیدا نشد.")
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ خطا در دانلود آهنگ: {e}")
-    finally:
-        user_states.pop(message.from_user.id, None)
+        bot.send_message(msg.chat.id, f"⚠️ خطا:\n{str(e)}")
 
 @bot.message_handler(func=lambda m: m.from_user.id == ADMIN_ID and m.chat.type == "private")
 def handle_admin_reply(message):
@@ -138,15 +128,16 @@ def handle_admin_reply(message):
         bot.send_message(target_id, f"{message.text}\n\n✍️ Sign by Amirreza")
         bot.send_message(message.chat.id, "✅ sended.")
 
-# Webhook route برای Railway
-@app.route("/", methods=["POST"])
-def webhook():
-    bot.process_new_updates([telebot.types.Update.de_json(request.stream.read().decode("utf-8"))])
-    return "OK", 200
-
 @app.route("/", methods=["GET"])
 def home():
-    return "Bot is running.", 200
+    return "Bot is up!", 200
+
+@app.route("/", methods=["POST"])
+def webhook():
+    json_string = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return "OK", 200
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
