@@ -81,7 +81,7 @@ https://on.soundcloud.com/GA0YwIlCeV9DyNQsfA
         try:
             # دریافت نرخ دلار به تومان از API نوسان
             url_toman = "https://api.navasan.ir/v1/exchange/latest"
-            res_toman = requests.get(url_toman)
+            res_toman = requests.get(url_toman, timeout=10)
             data_toman = res_toman.json()
             dollar_to_toman = None
             for item in data_toman.get('data', []):
@@ -92,12 +92,12 @@ https://on.soundcloud.com/GA0YwIlCeV9DyNQsfA
                 bot.send_message(call.message.chat.id, "خطا در دریافت نرخ دلار به تومان.")
                 return
 
-            # دریافت نرخ ارزهای جهانی به دلار از open.er-api.com
-            url = "https://open.er-api.com/v6/latest/USD"
-            res = requests.get(url)
+            # دریافت نرخ ارزهای جهانی به دلار از exchangerate.host
+            url = "https://api.exchangerate.host/latest?base=USD&symbols=KWD,OMR,GBP,CHF,EUR,USD,CAD,CNY"
+            res = requests.get(url, timeout=10)
             data = res.json()
 
-            if data['result'] == 'success':
+            if 'rates' in data:
                 rates = data['rates']
 
                 currencies = {
